@@ -25,7 +25,11 @@ SECRET_KEY = 'django-insecure-h4mlhj^4thqtcx7wv978i8wmdiy43+d$be978pkp3vc6wl100b
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'colacobiotic-jairo-unswitched.ngrok-free.dev']
+
+# Add this line below ALLOWED_HOSTS:
+CSRF_TRUSTED_ORIGINS = ['https://colacobiotic-jairo-unswitched.ngrok-free.dev']
+
 
 
 # Application definition

@@ -1,0 +1,186 @@
+{% extends 'authentication/base.html' %}
+
+{% block title %}Driver Monitor - Road Safety App{% endblock %}
+
+{% block content %}
+<style>
+    .monitor-container {
+        max-width: 600px;
+        margin: 20px auto;
+    }
+    .monitor-box {
+        background: white;
+        padding: 20px;
+        border-radius: 10px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    .sensor-data {
+        font-family: monospace;
+        background: #f8f8f8;
+        padding: 10px;
+        margin: 5px 0;
+        border-radius: 4px;
+    }
+    .status {
+        padding: 20px;
+        text-align: center;
+        font-size: 24px;
+        font-weight: bold;
+        border-radius: 10px;
+        margin-bottom: 20px;
+    }
+    .safe { background: #4CAF50; color: white; }
+    .risky { background: #f44336; color: white; }
+    .btn-monitor {
+        width: 100%;
+        padding: 15px;
+        font-size: 18px;
+        margin: 10px 0;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+    }
+    .start-btn { background: #4CAF50; color: white; }
+    .stop-btn { background: #f44336; color: white; }
+</style>
+
+<div class="monitor-container">
+    <div class="monitor-box">
+        <h2>🚗 Driver Behavior Monitor</h2>
+        <p>Real-time driving behavior detection using your phone sensors</p>
+        <button id="startBtn" class="btn-monitor start-btn">Start Monitoring</button>
+        <button id="stopBtn" class="btn-monitor stop-btn" style="display:none;">Stop Monitoring</button>
+    </div>
+
+    <div id="status" class="status safe">Ready to Start</div>
+
+    <div class="monitor-box">
+        <h3>📊 Live Sensor Data</h3>
+        <div class="sensor-data">
+            <strong>Accelerometer (m/s²):</strong><br>
+            X: <span id="accel_x">0.00</span> | 
+            Y: <span id="accel_y">0.00</span> | 
+            Z: <span id="accel_z">0.00</span>
+        </div>
+        <div class="sensor-data">
+            <strong>Gyroscope (°/s):</strong><br>
+            X: <span id="gyro_x">0.00</span> | 
+            Y: <span id="gyro_y">0.00</span> | 
+            Z: <span id="gyro_z">0.00</span>
+        </div>
+        <div class="sensor-data">
+            <strong>Prediction Confidence:</strong><br>
+            Safe: <span id="safe_prob">0</span>% | 
+            Risky: <span id="risky_prob">0</span>%
+        </div>
+    </div>
+</div>
+
+<script>
+    let monitoring = false;
+    let sensorData = {
+        accel_x: 0, accel_y: 0, accel_z: 0,
+        gyro_x: 0, gyro_y: 0, gyro_z: 0
+    };
+
+    async function requestPermission() {
+        if (typeof DeviceMotionEvent.requestPermission === 'function') {
+            try {
+                const permission = await DeviceMotionEvent.requestPermission();
+                if (permission !== 'granted') {
+                    alert('Permission denied for motion sensors!');
+                    return false;
+                }
+            } catch (error) {
+                console.error('Permission error:', error);
+                return false;
+            }
+        }
+        return true;
+    }
+
+    function startSensorCollection() {
+        window.addEventListener('devicemotion', function(event) {
+            if (!monitoring) return;
+
+            sensorData.accel_x = event.acceleration.x || 0;
+            sensorData.accel_y = event.acceleration.y || 0;
+            sensorData.accel_z = event.acceleration.z || 0;
+            sensorData.gyro_x = event.rotationRate.alpha || 0;
+            sensorData.gyro_y = event.rotationRate.beta || 0;
+            sensorData.gyro_z = event.rotationRate.gamma || 0;
+
+            document.getElementById('accel_x').textContent = sensorData.accel_x.toFixed(2);
+            document.getElementById('accel_y').textContent = sensorData.accel_y.toFixed(2);
+            document.getElementById('accel_z').textContent = sensorData.accel_z.toFixed(2);
+            document.getElementById('gyro_x').textContent = sensorData.gyro_x.toFixed(2);
+            document.getElementById('gyro_y').textContent = sensorData.gyro_y.toFixed(2);
+            document.getElementById('gyro_z').textContent = sensorData.gyro_z.toFixed(2);
+        });
+    }
+
+    setInterval(async function() {
+        if (!monitoring) return;
+
+        const data = {
+            accel_2: sensorData.accel_x,
+            accel_3: sensorData.accel_y,
+            accel_4: sensorData.accel_z,
+            gyro_2: sensorData.gyro_x,
+            gyro_3: sensorData.gyro_y,
+            gyro_4: sensorData.gyro_z,
+            proximity: 0
+        };
+
+        try {
+            const response = await fetch('{% url "predict_behavior" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            });
+
+            const result = await response.json();
+            
+            const statusDiv = document.getElementById('status');
+            document.getElementById('safe_prob').textContent = result.safe_probability.toFixed(1);
+            document.getElementById('risky_prob').textContent = result.risky_probability.toFixed(1);
+            
+            if (result.behavior === 'risky') {
+                statusDiv.textContent = '⚠️ RISKY DRIVING DETECTED!';
+                statusDiv.className = 'status risky';
+                if (navigator.vibrate) {
+                    navigator.vibrate([200, 100, 200]);
+                }
+            } else {
+                statusDiv.textContent = '✅ SAFE DRIVING';
+                statusDiv.className = 'status safe';
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            document.getElementById('status').textContent = '❌ Connection Error';
+        }
+    }, 2000);
+
+    document.getElementById('startBtn').addEventListener('click', async function() {
+        const permitted = await requestPermission();
+        if (!permitted) return;
+
+        monitoring = true;
+        startSensorCollection();
+        
+        document.getElementById('startBtn').style.display = 'none';
+        document.getElementById('stopBtn').style.display = 'block';
+        document.getElementById('status').textContent = 'Monitoring...';
+    });
+
+    document.getElementById('stopBtn').addEventListener('click', function() {
+        monitoring = false;
+        document.getElementById('startBtn').style.display = 'block';
+        document.getElementById('stopBtn').style.display = 'none';
+        document.getElementById('status').textContent = 'Stopped';
+    });
+</script>
+{% endblock %}

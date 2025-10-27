@@ -7,4 +7,6 @@ urlpatterns = [
     path('logout/', views.logout_view, name='logout'),
     path('home/', views.home, name='home'),
     path('profile/', views.profile, name='profile'),
+    path('sensor-monitor/', views.sensor_monitor, name='sensor_monitor'),  # New page
+    path('api/predict-behavior/', views.predict_behavior, name='predict_behavior'),  # API endpoint
 ]
