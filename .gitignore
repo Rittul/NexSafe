@@ -1,0 +1,15 @@
+# Ignore virtual environments
+nexsafe/
+.nexsafe/
+env/
+nexsafe/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# IDE / system files
+.vscode/
+.idea/
+.DS_Store
