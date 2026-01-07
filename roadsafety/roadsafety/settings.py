@@ -27,7 +27,6 @@ DEBUG = True
 
 ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'colacobiotic-jairo-unswitched.ngrok-free.dev']
 
-# Add this line below ALLOWED_HOSTS:
 CSRF_TRUSTED_ORIGINS = ['https://colacobiotic-jairo-unswitched.ngrok-free.dev']
 
 
